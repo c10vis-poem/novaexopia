@@ -1,0 +1,30 @@
+{"kind": "runtime", "slug": "qairt", "name": "Qualcomm AI Runtime", "target": "Hexagon NPU (v79 on Alpha)", "path": "runtimes/qairt.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "genie-x", "name": "GenieX", "target": "Hexagon NPU / CPU / GPU / hybrid", "path": "runtimes/genie-x.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "llama-cpp", "name": "llama.cpp", "target": "CPU / NPU via backend", "path": "runtimes/llama-cpp.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "onnx-runtime", "name": "ONNX Runtime", "target": "NPU via QNN EP", "path": "runtimes/onnx-runtime.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "whisper-cpp", "name": "whisper.cpp", "target": "CPU (glibc — needs Debian proot)", "path": "runtimes/whisper-cpp.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "cuda", "name": "CUDA", "target": "Jetson Orin Nano (Node Beta)", "path": "runtimes/cuda.md", "updated": "2026-09-06"}
+{"kind": "runtime", "slug": "node-js", "name": "Node.js LTS", "target": "any", "path": "runtimes/node-js.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "genie-x-engine", "name": "GenieX Engine", "runtime": "genie-x", "path": "engines/genie-x-engine.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "moonshine-onnx-engine", "name": "Moonshine STT Engine", "runtime": "onnx-runtime", "path": "engines/moonshine-onnx-engine.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "kokoro-tts-engine", "name": "Kokoro TTS Engine", "runtime": "onnx-runtime", "path": "engines/kokoro-tts-engine.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "piper-tts-engine", "name": "Piper TTS Engine", "runtime": "onnx-runtime", "path": "engines/piper-tts-engine.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "silero-vad-engine", "name": "Silero VAD Engine", "runtime": "onnx-runtime", "path": "engines/silero-vad-engine.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "llama-server", "name": "llama-server", "runtime": "llama-cpp", "path": "engines/llama-server.md", "updated": "2026-09-06"}
+{"kind": "engine", "slug": "openwiki-tui-engine", "name": "OpenWiki TUI Engine", "runtime": "node-js", "path": "engines/openwiki-tui-engine.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "active", "slug": "qwen-3.5-0.8b-qai-hub-genie", "name": "Qwen 3.5 0.8B", "quant": "QAI Hub Genie bundle", "size": "~0.5 GB", "node": "Alpha / NPU-pinned via QAIRT", "role": "executor", "path": "weights/active/qwen-3.5-0.8b-qai-hub-genie.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "active", "slug": "qwen-3.5-9b-unsloth-gguf-q4_0", "name": "Qwen 3.5 9B", "quant": "GGUF Q4_0 (Unsloth)", "size": "~5.45 GB weights + ~0.5-1 GB KV = ~6-6.5 GB total", "node": "Alpha / NPU via GenieX", "role": "query", "path": "weights/active/qwen-3.5-9b-unsloth-gguf-q4_0.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "active", "slug": "qwen-3.5-2b-q4_0-gguf", "name": "Qwen 3.5 2B", "quant": "GGUF Q4_0", "size": "1.21 GB", "node": "Alpha", "role": "fallback", "path": "weights/active/qwen-3.5-2b-q4_0-gguf.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "gemma-4-12b-it-qat-ud-q4_k_xl", "name": "Gemma 4 12B IT", "quant": "QAT UD-Q4_K_XL GGUF", "size": "~7 GB", "node": "Beta (Jetson, 8 GB — tight)", "path": "weights/candidates/gemma-4-12b-it-qat-ud-q4_k_xl.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "gemma-4-e4b-qai-hub", "name": "Gemma 4 E4B", "quant": "QAI Hub", "size": "~2.5 GB", "node": "Alpha", "path": "weights/candidates/gemma-4-e4b-qai-hub.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "phi-4-mini-qai-hub", "name": "Phi-4-Mini", "quant": "QAI Hub", "size": "~2 GB", "node": "Alpha", "path": "weights/candidates/phi-4-mini-qai-hub.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "granite-mini", "name": "Granite Mini", "quant": "TBD", "size": "~2 GB", "node": "Alpha", "path": "weights/candidates/granite-mini.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "qwen-3.5-4b", "name": "Qwen 3.5 4B", "quant": "GGUF Q4_0", "size": "~2.5 GB", "node": "Alpha", "path": "weights/candidates/qwen-3.5-4b.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "candidate", "slug": "twin-9b", "name": "Twin 9B (?)", "quant": "TBD", "size": "TBD", "node": "TBD", "path": "weights/candidates/twin-9b.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "rejected", "slug": "pocket-35b-gguf", "reason": "~17.5GB Q4 weights, exceeds every node", "path": "weights/rejected/pocket-35b-gguf.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "voice", "slug": "moonshine-small-onnx", "name": "Moonshine Small (ONNX)", "role": "STT", "path": "weights/voice/moonshine-small-onnx.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "voice", "slug": "kokoro-82m", "name": "Kokoro 82M", "role": "TTS", "path": "weights/voice/kokoro-82m.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "voice", "slug": "sherpa-onnx", "name": "Sherpa ONNX", "role": "TTS alt", "path": "weights/voice/sherpa-onnx.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "voice", "slug": "silero-vad", "name": "Silero VAD", "role": "VAD", "path": "weights/voice/silero-vad.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "voice", "slug": "parakeet", "name": "NVIDIA Parakeet", "role": "STT alt", "path": "weights/voice/parakeet.md", "updated": "2026-09-06"}
+{"kind": "weight", "status": "vision", "slug": "litehrnet", "path": "weights/vision/litehrnet.md", "updated": "2026-09-06"}
