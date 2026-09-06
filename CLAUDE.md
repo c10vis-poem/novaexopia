@@ -21,9 +21,9 @@ runtime definitions, and tool-skill wiring. Supersedes the earlier "Omni Claw"
 
 ## Conventions
 
-- Engine configs in `engines/` — one file per inference backend (llama.cpp,
-  QAIRT, cloud API).
-- Runtime definitions in `runtimes/` — how a model is loaded and served.
+- `daemons/` — shell daemon and media daemon lifecycle configs, IPC contracts.
+- `runtimes/` — how a model is loaded and served (llama.cpp, QAIRT, ONNX, etc.).
+- `tool-skills/` — tool/skill wiring per inference backend (was `engines/`).
 - Weight manifests in `weights/` — model metadata, quantization specs, device
   compatibility. Actual weight files are NOT stored in git.
 - `config/` holds cross-cutting settings (temperature defaults, token limits,
