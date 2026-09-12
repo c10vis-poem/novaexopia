@@ -1,4 +1,4 @@
-# manifest.jsonl
+# MAP.md
 
 Repository: `novaexopia`
 

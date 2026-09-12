@@ -1,4 +1,4 @@
-# manifest.jsonl
+# AGENTS.md
 
 Repository: `novaexopia`
 
