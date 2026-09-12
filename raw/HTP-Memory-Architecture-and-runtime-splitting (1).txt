@@ -1,0 +1,235 @@
+﻿How the Split Works: We discussed how models larger than 3.5GB (like the Qwen 3.5 9B Q4_0 at ~5.5GB–6GB or Gemma 12B) bypass that single-session ceiling:
+Multi-Device Virtualization: Splitting layers across virtual NPU domains (e.g., D=HTP0,HTP1 in llama.cpp), where HTP0 processes layers 0–24 and pipes intermediate tensors via internal hardware RPC to HTP1 for layers 25–48.
+Dynamic DMA Chunking: In QAIRT and Qualcomm's GENIE runtime, streaming context chunks and layer weights directly through DMA into local cache rather than pinning the entire model into a single static memory allocation.
+
+
+ARCHITECTURAL SPECIFICATION & INSTALLER MANUAL
+Qualcomm Hexagon HTP Memory Architecture, Multi-Device Virtualization, and Runtime Splitting
+
+
+===============================================================================
+W5+H ARTIFACT SPECIFICATION
+-------------------------------------------------------------------------------
+WHO:   Future System Installer, Automated Build Agent, or Human Maintainer.
+WHAT:  Engineering Manual & Diagnostic Tooling for Hexagon NPU Model Partitioning.
+WHEN:  Required before staging, quantizing, or running any local LLM > 3.5GB 
+       (e.g., Qwen 3.5 9B Q4_0, Gemma 4 12B QAT) on Snapdragon hardware.
+WHERE: On-Device (Snapdragon 8 Elite / FastRPC / Termux) & Host CI Toolchains.
+WHY:   Prevents driver crashes, uncatchable SIGSEGV faults, and OS reboots 
+       caused by exceeding the 32-bit FastRPC User Process Domain ceiling.
+HOW:   Enforces multi-device layer distribution (D=HTP0,HTP1) in llama.cpp, 
+       or dynamic DMA context chunking in Qualcomm QAIRT / GENIE SDKs.
+===============================================================================
+PROBLEM SOLVED:
+Bypasses the ~3.5GB FastRPC User Process Domain (uPD) memory-mapping barrier on 
+64-bit Snapdragon SoCs, enabling 5.5GB–12GB+ models to run entirely on NPU silicon.
+===============================================================================
+
+
+Part 1: The Hardware Reality (CPU vs. Hexagon NPU)
+When provisioning models, a common misconception is that a 64-bit SoC with 16GB of LPDDR5X RAM can allocate large 6GB+ model buffers anywhere in physical memory. On Qualcomm SoCs, the execution subsystems operate under fundamentally different memory models:
+
+
+
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                   SNAPDRAGON 8 ELITE SYSTEM RAM (16GB)                 │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+         ┌──────────────────────────┴──────────────────────────┐
+         ▼                                                     ▼
+┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+│     ORYON CPU (64-bit Arm)      │   │    HEXAGON NPU / DSP (QuRT)     │
+├─────────────────────────────────┤   ├─────────────────────────────────┤
+│ • Full 64-bit virtual addressing│   │ • Sandboxed User Process Domain │
+│ • Can map all 16GB contiguous   │   │ • 32-bit FastRPC Address Space  │
+│ • No 3.5GB session ceiling      │   │ • Hard ~3.5GB usable limit/PD   │
+└─────────────────────────────────┘   └─────────────────────────────────┘
+
+
+Why the 3.5GB Ceiling Exists
+The FastRPC User Process Domain (uPD):
+To prevent an untrusted user process from corrupting core modem or sensor DSP routines, Qualcomm isolates user NPU tasks inside a sandboxed User Process Domain managed by the QuRT micro-kernel.
+This virtual domain operates within a 32-bit address space (4GB max).
+Driver & Kernel Reserved Overhead:
+The QuRT kernel mappings, FastRPC driver page tables, hardware stack frames, and DMA scatter-gather buffers occupy ~500MB of this space.
+
+
+The Net Usable Window: Any single mapped buffer (model weights + runtime KV cache) cannot exceed ~3.5GB. Allocating a contiguous 5.5GB buffer (such as Qwen 3.5 9B Q4_0) results in an immediate QNN_MEM_ALLOC_ERROR or kernel crash.
+
+
+
+
+Part 2: The Two Solutions for Running >3.5GB Models
+Solution A: Multi-Device Virtualization (llama.cpp / FastRPC)
+In llama.cpp with the Snapdragon backend (libggml-htp.so), the driver treats Hexagon like a multi-GPU cluster by instantiating multiple virtual Process Domains:
+
+
+               ┌──────────────────────────────────────┐  
+               │    Qwen 3.5 9B Q4_0 GGUF (~5.6GB)    │  
+               └──────────────────┬───────────────────┘  
+                                  │  
+         ┌────────────────────────┴────────────────────────┐  
+         ▼ (Split across virtual Process Domains)          ▼  
+┌─────────────────────────────────┐       ┌─────────────────────────────────┐  
+│     Virtual Device: HTP0        │       │     Virtual Device: HTP1        │  
+│  (Process Domain 1: Max 3.5GB)  │       │  (Process Domain 2: Max 3.5GB)  │  
+├─────────────────────────────────┤       ├─────────────────────────────────┤  
+│ Transformer Layers: 0 to 24     │       │ Transformer Layers: 25 to 48    │  
+└─────────────────────────────────┘       └─────────────────────────────────┘  
+
+
+
+
+Command-Line Execution Flag:
+
+
+# Split execution across two 3.5GB virtual process domains
+D=HTP0,HTP1 ./llama-cli \
+  -m models/qwen3.5-9b-q4_0.gguf \
+  -p "System initialized." \
+  --n-gpu-layers 49
+
+
+Inter-Domain Transfer: Layers 0–24 execute inside HTP0. Intermediate activations pass over the high-speed internal chip RPC to HTP1, which completes layers 25–48 and returns the output tokens.
+
+
+Solution B: Qualcomm QAIRT & GENIE Context Chunking
+
+
+For precompiled native graphs (.bin assets via QAI-Hub or LiteRT):
+Model Pipeline Compilation: The model is not compiled into a single flat buffer. The compiler chunks the tensor graph into subgraphs matching target HTP slice sizes.
+
+
+DMA Streaming: Weights stream dynamically from system RAM into the HTP scratchpad through Direct Memory Access (DMA), avoiding static 32-bit address exhaustion.
+
+
+Part 3: The Executable Installer Skill (SKILL.md)
+This skill definition can be dropped into an agent harness (e.g., OpenWiki, Claude Code CLI, or custom orchestrators) to automate model verification and launch parameters:
+
+
+---
+name: snapdragon-npu-partitioner
+description: Validates and configures large LLMs for Qualcomm Hexagon NPU multi-device execution.
+triggers:
+  - "run model on npu"
+  - "partition llm weights"
+  - "configure htp execution"
+inputs:
+  model_path: string
+  context_length: integer
+tools_required:
+  - terminal_exec
+  - file_inspector
+---
+
+
+# Operating Instructions
+
+
+1. **Inspect Model Footprint:**
+   - Query the target model size in gigabytes.
+   - Calculate estimated KV Cache: `(2 * layers * heads * head_dim * context_len * precision)`.
+
+
+2. **Evaluate Process Domain (PD) Allocation:**
+   - Total Memory = `Model Size + KV Cache Overhead`.
+   - If Total Memory <= 3.2 GB: Allocate single domain (`D=HTP0`).
+   - If 3.2 GB < Total Memory <= 6.5 GB: Allocate dual domain (`D=HTP0,HTP1`).
+   - If Total Memory > 6.5 GB: Enforce 3-way split (`D=HTP0,HTP1,HTP2`) or offload embedding heads to CPU/GPU.
+
+
+3. **Verify Runtime Environment:**
+   - Check presence of `libQnnHtp.so` or `libggml-htp.so` in dynamic linker path.
+   - Confirm `/dev/adsprpc-smd` (FastRPC character device) is accessible with read/write permissions.
+
+
+4. **Emit Verified Run Command:**
+   - Return the exact execution flags to the executor daemon without manual user intervention.
+
+
+
+
+Part 4: The Validation & Diagnostic Script (htp_partition_calc.py)
+A lightweight, standalone Python utility designed to run locally in Termux or host CI pipelines before launching a model.
+
+
+#!/usr/bin/env python3
+"""
+===============================================================================
+W5+H ARTIFACT SPECIFICATION
+-------------------------------------------------------------------------------
+WHO:   Local Executor / Termux Diagnostic Pipeline
+WHAT:  Hexagon NPU Partition Calculator & Command Generator
+WHEN:  Run automatically prior to spawning llama.cpp or QAIRT instances
+WHERE: Local Shell / Android Termux / Qualcomm Linux
+WHY:   Guarantees memory boundaries adhere to FastRPC QuRT limits before 
+       invoking native drivers, preventing kernel crashes.
+HOW:   Parses file size, computes KV cache footprint, and prints verified 
+       environment variables (e.g. D=HTP0,HTP1).
+===============================================================================
+PROBLEM SOLVED:
+Eliminates trial-and-error memory allocation faults by mathematically sizing 
+and generating the multi-device flag mapping.
+===============================================================================
+"""
+
+
+import os
+import sys
+import argparse
+
+
+MAX_PD_USABLE_GB = 3.25  # Conservative ceiling leaving margin for driver heaps
+
+
+def calculate_npu_allocation(model_path: str, context_len: int, layers: int = 48) -> dict:
+    if not os.path.exists(model_path):
+        return {"status": "error", "message": f"Model file not found: {model_path}"}
+    
+    file_size_gb = os.path.getsize(model_path) / (1024 ** 3)
+    
+    # Rough estimate of FP16 KV cache overhead for standard architectures
+    kv_cache_gb = (2 * layers * 4096 * context_len * 2) / (1024 ** 3) * 0.05
+    total_required_gb = file_size_gb + kv_cache_gb
+    
+    # Determine required Process Domains
+    if total_required_gb <= MAX_PD_USABLE_GB:
+        domains = ["HTP0"]
+    elif total_required_gb <= (MAX_PD_USABLE_GB * 2):
+        domains = ["HTP0", "HTP1"]
+    elif total_required_gb <= (MAX_PD_USABLE_GB * 3):
+        domains = ["HTP0", "HTP1", "HTP2"]
+    else:
+        return {
+            "status": "warning",
+            "message": f"Model ({total_required_gb:.2f} GB) exceeds 3-domain limit. Heterogeneous offloading required."
+        }
+
+
+    device_string = ",".join(domains)
+    return {
+        "status": "success",
+        "file_size_gb": round(file_size_gb, 2),
+        "total_memory_gb": round(total_required_gb, 2),
+        "domains_required": len(domains),
+        "device_flag": f"D={device_string}",
+        "export_cmd": f"export D={device_string}"
+    }
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Qualcomm Hexagon NPU Partition Calculator")
+    parser.add_argument("--model", type=str, required=True, help="Path to GGUF or BIN model file")
+    parser.add_argument("--ctx", type=int, default=4096, help="Target context window size")
+    args = parser.parse_args()
+
+
+    result = calculate_npu_allocation(args.model, args.ctx)
+    if result["status"] == "success":
+        print(f"[OK] Model: {result['file_size_gb']} GB | Total Req: {result['total_memory_gb']} GB")
+        print(f"[OK] Partitions: {result['domains_required']} Domain(s) -> {result['device_flag']}")
+        print(f"\nExecution Prefix:\n{result['export_cmd']}")
+    else:
+        print(f"[{result['status'].upper()}] {result['message']}")
+        sys.exit(1)

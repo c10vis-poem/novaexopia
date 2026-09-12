@@ -1,4 +1,4 @@
-# manifest.jsonl
+# RESUME.md
 
 Repository: `novaexopia`
 
